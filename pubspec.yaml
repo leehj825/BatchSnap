@@ -1,0 +1,27 @@
+name: batchsnap
+description: 사진 일괄 용량 줄이기 & 포맷 변환 (100% 오프라인, 전면 광고 없음)
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.3.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_image_compress: ^2.3.0
+  image_picker: ^1.1.2
+  gal: ^2.3.0
+  share_plus: ^10.1.0
+  archive: ^3.6.1
+  shared_preferences: ^2.3.2
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
