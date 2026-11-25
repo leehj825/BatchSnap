@@ -1,0 +1,2 @@
+# BatchSnap
+BatchSnap: Image Resizer
