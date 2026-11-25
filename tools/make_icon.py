@@ -1,5 +1,5 @@
 """Generates the app icon PNGs. Run: python3 tools/make_icon.py (requires Pillow)."""
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 S = 1024
 SS = 4  # supersampling
@@ -62,6 +62,9 @@ def glyph(size, scale):
     d.rectangle([bx - 14 * scale * size / S, by - aw, bx + 14 * scale * size / S, by + 10 * scale * size / S],
                 fill=(255, 255, 255, 255))
     d.polygon([(bx - aw, by), (bx + aw, by), (bx, by + aw * 1.05)], fill=(255, 255, 255, 255))
+    # recentre the glyph (bbox centre is at (565, 545) in design units)
+    k = scale * size / S
+    img = ImageChops.offset(img, int(round((512 - 565) * k)), int(round((512 - 545) * k)))
     return img
 
 
@@ -72,9 +75,9 @@ def save(img, path):
 big = S * SS
 # Full icon (legacy / iOS-style): gradient square + glyph
 full = gradient(big).convert("RGBA")
-full.alpha_composite(glyph(big, 1.0))
+full.alpha_composite(glyph(big, 1.3))
 save(full, "assets/icon/icon.png")
 # Adaptive foreground: transparent, glyph shrunk to stay inside the 66% safe zone
-save(glyph(big, 0.78), "assets/icon/icon_foreground.png")
+save(glyph(big, 1.08), "assets/icon/icon_foreground.png")
 save(gradient(big).convert("RGBA"), "assets/icon/icon_background.png")
 print("ok")
