@@ -25,7 +25,7 @@ class _SetupScreenState extends State<SetupScreen> {
       TextEditingController(text: s.suffix);
 
   static const _presets = [200, 500, 1024, 2048];
-  // 무료 버전에서 쓸 수 있는 프리셋 (설계서 5장).
+  // Presets available in the free version.
   static const _freePresets = {500, 1024, 2048};
 
   bool get _pro => AppState.instance.isPro;
@@ -34,7 +34,7 @@ class _SetupScreenState extends State<SetupScreen> {
   void initState() {
     super.initState();
     AppState.instance.addListener(_onPro);
-    // 무료 사용자는 EXIF 삭제가 Pro 기능이므로 기본 off.
+    // EXIF removal is a Pro feature, so it defaults to off for free users.
     if (!_pro) s.stripExif = false;
     if (!_pro && s.mode == CompressMode.target && s.targetKb == 200) {
       s.targetKb = 500;
@@ -61,26 +61,26 @@ class _SetupScreenState extends State<SetupScreen> {
 
   Future<void> _customKb() async {
     if (!_pro) {
-      await showProDialog(context, '사용자 지정 용량(예: 150KB)은 Pro 기능이에요.');
+      await showProDialog(context, 'Custom target sizes (e.g. 150KB) are a Pro feature.');
       return;
     }
     final c = TextEditingController();
     final kb = await showDialog<int>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('목표 용량 (KB)'),
+        title: const Text('Target size (KB)'),
         content: TextField(
           controller: c,
           autofocus: true,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(suffixText: 'KB', hintText: '예: 300'),
+          decoration: const InputDecoration(suffixText: 'KB', hintText: 'e.g. 300'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, int.tryParse(c.text)),
-              child: const Text('확인')),
+              child: const Text('OK')),
         ],
       ),
     );
@@ -90,7 +90,7 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _convert() async {
     if (!_pro && images.length > AppState.freeBatchLimit) {
       await showProDialog(context,
-          '무료 버전은 한 번에 ${AppState.freeBatchLimit}장까지 변환할 수 있어요.');
+          'The free version converts up to ${AppState.freeBatchLimit} photos at a time.');
       return;
     }
     s.suffix = _suffix.text.trim();
@@ -106,7 +106,7 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('일괄 설정')),
+      appBar: AppBar(title: const Text('Batch setup')),
       body: Column(
         children: [
           Expanded(
@@ -116,7 +116,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 Row(children: [
                   Expanded(
                     child: Text(
-                      '선택됨 ${images.length}장 · 총 ${formatBytes(totalBytes(images))}',
+                      '${images.length} selected · ${formatBytes(totalBytes(images))} total',
                       style: tabular.copyWith(
                           fontSize: 16, fontWeight: FontWeight.w600),
                     ),
@@ -124,7 +124,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   TextButton.icon(
                       onPressed: _add,
                       icon: const Icon(Icons.add),
-                      label: const Text('추가')),
+                      label: const Text('Add')),
                 ]),
                 const SizedBox(height: 8),
                 SizedBox(
@@ -141,11 +141,11 @@ class _SetupScreenState extends State<SetupScreen> {
                   showSelectedIcon: false,
                   segments: const [
                     ButtonSegment(
-                        value: CompressMode.target, label: Text('목표 용량')),
+                        value: CompressMode.target, label: Text('Target size')),
                     ButtonSegment(
-                        value: CompressMode.manual, label: Text('화질·크기')),
+                        value: CompressMode.manual, label: Text('Quality & size')),
                     ButtonSegment(
-                        value: CompressMode.formatOnly, label: Text('포맷만 변환')),
+                        value: CompressMode.formatOnly, label: Text('Format only')),
                   ],
                   selected: {s.mode},
                   onSelectionChanged: (v) => setState(() => s.mode = v.first),
@@ -154,14 +154,14 @@ class _SetupScreenState extends State<SetupScreen> {
                 if (s.mode == CompressMode.target) _targetOptions(scheme),
                 if (s.mode == CompressMode.manual) _manualOptions(),
                 if (s.mode == CompressMode.formatOnly)
-                  const Text('화질 손실을 최소화(품질 95%)하면서 확장자만 변환합니다.'),
+                  const Text('Converts the file format only, with minimal quality loss (quality 95%).'),
                 const SizedBox(height: 20),
-                Text('출력 포맷', style: Theme.of(context).textTheme.titleSmall),
+                Text('Output format', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 8),
                 SegmentedButton<OutFormat>(
                   showSelectedIcon: false,
                   segments: const [
-                    ButtonSegment(value: OutFormat.jpg, label: Text('JPG (기본)')),
+                    ButtonSegment(value: OutFormat.jpg, label: Text('JPG (default)')),
                     ButtonSegment(value: OutFormat.webp, label: Text('WEBP')),
                     ButtonSegment(value: OutFormat.png, label: Text('PNG')),
                   ],
@@ -171,17 +171,17 @@ class _SetupScreenState extends State<SetupScreen> {
                 const SizedBox(height: 12),
                 Card(
                   child: ExpansionTile(
-                    title: const Text('고급 옵션'),
+                    title: const Text('Advanced options'),
                     shape: const Border(),
                     collapsedShape: const Border(),
                     children: [
                       SwitchListTile(
-                        title: const Text('개인정보(GPS·EXIF) 삭제'),
-                        subtitle: _pro ? null : const Text('Pro 기능'),
+                        title: const Text('Remove private info (GPS · EXIF)'),
+                        subtitle: _pro ? null : const Text('Pro feature'),
                         value: s.stripExif,
                         onChanged: (v) {
                           if (!_pro) {
-                            showProDialog(context, 'GPS·EXIF 일괄 삭제는 Pro 기능이에요.');
+                            showProDialog(context, 'Bulk GPS/EXIF removal is a Pro feature.');
                             return;
                           }
                           setState(() => s.stripExif = v);
@@ -192,8 +192,8 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: TextField(
                           controller: _suffix,
                           decoration: const InputDecoration(
-                            labelText: '파일명 접미사',
-                            hintText: '예: _resized (비우면 원본 이름 유지)',
+                            labelText: 'File name suffix',
+                            hintText: 'e.g. _resized (leave empty to keep the original name)',
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -204,7 +204,7 @@ class _SetupScreenState extends State<SetupScreen> {
               ],
             ),
           ),
-          // 오클릭 방지를 위해 이 화면에는 배너 광고를 두지 않는다.
+          // No banner ad on this screen to prevent accidental taps.
           SafeArea(
             top: false,
             child: Padding(
@@ -217,11 +217,11 @@ class _SetupScreenState extends State<SetupScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('${images.length}장 일괄 변환하기',
+                      Text('Convert ${images.length} photos',
                           style: const TextStyle(
                               fontSize: 17, fontWeight: FontWeight.w700)),
                       if (s.mode == CompressMode.target)
-                        Text('예상: 장당 ${formatKb(s.targetKb)} 이하로 압축',
+                        Text('Each photo compressed to under ${formatKb(s.targetKb)}',
                             style: const TextStyle(fontSize: 12)),
                     ],
                   ),
@@ -264,21 +264,21 @@ class _SetupScreenState extends State<SetupScreen> {
     return Wrap(spacing: 8, runSpacing: 8, children: [
       for (final kb in _presets)
         ChoiceChip(
-          label: Text('${formatKb(kb)} 이하'),
+          label: Text('Under ${formatKb(kb)}'),
           avatar: (!_pro && !_freePresets.contains(kb))
               ? const Icon(Icons.lock_outline, size: 16)
               : null,
           selected: s.targetKb == kb,
           onSelected: (_) {
             if (!_pro && !_freePresets.contains(kb)) {
-              showProDialog(context, '200KB 프리셋은 Pro 기능이에요.');
+              showProDialog(context, 'The 200KB preset is a Pro feature.');
               return;
             }
             setState(() => s.targetKb = kb);
           },
         ),
       ChoiceChip(
-        label: Text(custom ? '${formatKb(s.targetKb)} 이하' : '직접 입력'),
+        label: Text(custom ? 'Under ${formatKb(s.targetKb)}' : 'Custom'),
         avatar: _pro ? null : const Icon(Icons.lock_outline, size: 16),
         selected: custom,
         onSelected: (_) => _customKb(),
@@ -288,7 +288,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
   Widget _manualOptions() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('품질 ${s.quality}%', style: tabular),
+      Text('Quality ${s.quality}%', style: tabular),
       Slider(
         min: 10,
         max: 100,

@@ -54,7 +54,7 @@ class _ResultScreenState extends State<ResultScreen> {
       );
       if (!mounted) return;
       if (items.isEmpty) {
-        Navigator.pop(context); // 첫 장 처리 전에 취소됨
+        Navigator.pop(context); // cancelled before the first photo was processed
         return;
       }
       setState(() {
@@ -85,7 +85,7 @@ class _ResultScreenState extends State<ResultScreen> {
       }
       if (mounted) setState(() => _savedToGallery = true);
     } catch (_) {
-      // 저장 실패해도 공유는 가능하므로 조용히 넘어간다.
+      // Sharing still works if saving fails, so fail silently.
     }
   }
 
@@ -95,7 +95,7 @@ class _ResultScreenState extends State<ResultScreen> {
 
   Future<void> _shareZip() async {
     if (!AppState.instance.isPro) {
-      await showProDialog(context, 'ZIP으로 묶어 공유는 Pro 기능이에요.');
+      await showProDialog(context, 'Sharing as a ZIP is a Pro feature.');
       return;
     }
     final zipPath = '${_outDir.path}/BatchSnap.zip';
@@ -117,7 +117,7 @@ class _ResultScreenState extends State<ResultScreen> {
   Widget build(BuildContext context) {
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('변환 실패')),
+        appBar: AppBar(title: const Text('Conversion failed')),
         body: Center(
             child: Padding(
                 padding: const EdgeInsets.all(24), child: Text(_error!))),
@@ -127,7 +127,7 @@ class _ResultScreenState extends State<ResultScreen> {
       canPop: _done,
       child: Scaffold(
         appBar: AppBar(
-            title: Text(_done ? '변환 완료' : '변환 중...'),
+            title: Text(_done ? 'Done' : 'Converting...'),
             automaticallyImplyLeading: _done),
         body: _done ? _result() : _progress(),
       ),
@@ -140,7 +140,7 @@ class _ResultScreenState extends State<ResultScreen> {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('${_index + 1} / $total 처리 중...',
+          Text('Processing ${_index + 1} / $total...',
               style: tabular.copyWith(fontSize: 18)),
           const SizedBox(height: 16),
           LinearProgressIndicator(value: _index / total, minHeight: 8),
@@ -149,9 +149,9 @@ class _ResultScreenState extends State<ResultScreen> {
           const SizedBox(height: 24),
           OutlinedButton(
             onPressed: () {
-              _cancel.cancelled = true; // 현재 장 처리 후 중단
+              _cancel.cancelled = true; // stops after the current photo
             },
-            child: const Text('취소'),
+            child: const Text('Cancel'),
           ),
         ]),
       ),
@@ -176,8 +176,8 @@ class _ResultScreenState extends State<ResultScreen> {
                 const SizedBox(height: 6),
                 Text(
                   saved > 0
-                      ? '${formatBytes(saved)} 절약 (-${pct.toStringAsFixed(1)}%)'
-                      : '용량이 줄지 않았어요',
+                      ? '${formatBytes(saved)} saved (-${pct.toStringAsFixed(1)}%)'
+                      : 'File size did not shrink',
                   style: tabular.copyWith(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
@@ -188,12 +188,12 @@ class _ResultScreenState extends State<ResultScreen> {
                   const Chip(
                     avatar: Icon(Icons.check_circle,
                         color: AppColors.success, size: 18),
-                    label: Text('갤러리(/Pictures/BatchSnap)에 자동 저장됨'),
+                    label: Text('Saved to gallery (/Pictures/BatchSnap)'),
                   ),
                 if (missed > 0)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text('$missed장은 목표 용량에 도달하지 못했어요 (최대한 압축됨)',
+                    child: Text('$missed photo(s) could not reach the target size (compressed as much as possible)',
                         style: const TextStyle(color: Colors.orange)),
                   ),
               ]),
@@ -233,7 +233,7 @@ class _ResultScreenState extends State<ResultScreen> {
               child: FilledButton.icon(
                 onPressed: _shareAll,
                 icon: const Icon(Icons.share),
-                label: const Text('전체 공유하기'),
+                label: const Text('Share all'),
               ),
             ),
             const SizedBox(height: 8),
@@ -241,14 +241,14 @@ class _ResultScreenState extends State<ResultScreen> {
               Expanded(
                 child: OutlinedButton(
                     onPressed: _shareZip,
-                    child: const Text('ZIP으로 묶어 공유 (Pro)')),
+                    child: const Text('Share as ZIP (Pro)')),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
                     onPressed: () =>
                         Navigator.popUntil(context, (r) => r.isFirst),
-                    child: const Text('홈으로')),
+                    child: const Text('Home')),
               ),
             ]),
           ]),

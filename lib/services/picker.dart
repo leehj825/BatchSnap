@@ -19,7 +19,7 @@ String _formatOf(String path) {
   };
 }
 
-/// 시스템 포토 피커로 다중 선택 (전체 저장소 권한 불필요).
+/// Multi-select via the system photo picker (no broad storage permission needed).
 Future<List<PickedImage>> pickImages() async {
   final files = await _picker.pickMultiImage();
   final out = <PickedImage>[];

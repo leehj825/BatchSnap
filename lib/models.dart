@@ -15,11 +15,11 @@ extension OutFormatX on OutFormat {
 
 extension ResizePresetX on ResizePreset {
   String get label => switch (this) {
-        ResizePreset.original => '원본 유지',
-        ResizePreset.side1920 => '긴 변 1920px',
+        ResizePreset.original => 'Keep original',
+        ResizePreset.side1920 => 'Long side 1920px',
         ResizePreset.side1280 => '1280px',
         ResizePreset.side800 => '800px',
-        ResizePreset.half => '50% 축소',
+        ResizePreset.half => 'Scale 50%',
       };
 }
 
@@ -32,7 +32,7 @@ class PickedImage {
   });
 
   final String path;
-  final String name; // 확장자 제외 파일명
+  final String name; // file name without extension
   final int bytes;
   final String format; // HEIC / JPG / PNG / WEBP ...
 }
@@ -71,7 +71,7 @@ class ConvertedItem {
   final int outBytes;
   final OutFormat outFormat;
 
-  /// 목표 용량 모드에서 목표를 달성했는지 (다른 모드에서는 항상 true).
+  /// Whether the target size was met in target mode (always true in other modes).
   final bool targetMet;
 
   double get reduction =>

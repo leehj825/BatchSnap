@@ -35,21 +35,21 @@ class HomeScreen extends StatelessWidget {
               ActionChip(
                 avatar: const Icon(Icons.workspace_premium,
                     size: 18, color: Color(0xFFB45309)),
-                label: Text(state.isPro ? 'PRO' : 'PRO 받기'),
+                label: Text(state.isPro ? 'PRO' : 'Get PRO'),
                 backgroundColor: const Color(0xFFFEF3C7),
                 onPressed: state.isPro
                     ? null
-                    : () => showProDialog(context, 'Pro로 모든 제한을 해제하세요.'),
+                    : () => showProDialog(context, 'Unlock all limits with Pro.'),
               ),
               IconButton(
                 icon: const Icon(Icons.settings_outlined),
-                tooltip: '설정',
+                tooltip: 'Settings',
                 onPressed: () => showAboutDialog(
                   context: context,
                   applicationName: 'BatchSnap',
                   applicationVersion: '0.1.0',
                   children: const [
-                    Text('100% 오프라인 · 전면 광고 없음 · 로그인 없음'),
+                    Text('100% offline · No interstitial ads · No sign-in'),
                   ],
                 ),
               ),
@@ -71,7 +71,7 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             Icon(Icons.add_photo_alternate_outlined, size: 44),
                             SizedBox(height: 8),
-                            Text('+ 사진 여러 장 선택하기',
+                            Text('+ Select multiple photos',
                                 style: TextStyle(
                                     fontSize: 18, fontWeight: FontWeight.w700)),
                           ],
@@ -84,14 +84,14 @@ class HomeScreen extends StatelessWidget {
                       runSpacing: 8,
                       children: [
                         ActionChip(
-                          label: const Text('관공서·웹 (500KB 이하)'),
+                          label: const Text('Gov / Web (under 500KB)'),
                           onPressed: () => _start(
                               context,
                               BatchSettings(
                                   mode: CompressMode.target, targetKb: 500)),
                         ),
                         ActionChip(
-                          label: const Text('포맷 변환 (모두 JPG로)'),
+                          label: const Text('Convert format (all to JPG)'),
                           onPressed: () => _start(
                               context,
                               BatchSettings(
@@ -99,7 +99,7 @@ class HomeScreen extends StatelessWidget {
                                   format: OutFormat.jpg)),
                         ),
                         ActionChip(
-                          label: const Text('용량 절반 줄이기 (50%)'),
+                          label: const Text('Halve file size (50%)'),
                           onPressed: () => _start(
                               context,
                               BatchSettings(
@@ -110,13 +110,13 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 28),
-                    Text('최근 변환 기록',
+                    Text('Recent conversions',
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     if (state.history.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Center(child: Text('아직 변환 기록이 없어요')),
+                        child: Center(child: Text('No conversions yet')),
                       )
                     else
                       for (final h in state.history) _HistoryCard(h),
@@ -150,7 +150,7 @@ class _HistoryCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        title: Text('${h.count}장 처리',
+        title: Text('${h.count} photos processed',
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(formatDate(h.date)),
         trailing: Text(

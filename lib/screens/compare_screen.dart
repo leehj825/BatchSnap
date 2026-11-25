@@ -6,7 +6,7 @@ import '../format.dart';
 import '../models.dart';
 import '../theme.dart';
 
-/// 비포/애프터 비교 뷰어: 슬라이더 왼쪽은 압축본, 오른쪽은 원본. 핀치로 확대 가능.
+/// Before/after viewer: converted on the left of the slider, original on the right. Pinch to zoom.
 class CompareScreen extends StatefulWidget {
   const CompareScreen({super.key, required this.item});
   final ConvertedItem item;
@@ -29,16 +29,16 @@ class _CompareScreenState extends State<CompareScreen> {
   Widget build(BuildContext context) {
     final it = widget.item;
     return Scaffold(
-      appBar: AppBar(title: const Text('화질 비교')),
+      appBar: AppBar(title: const Text('Compare quality')),
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('변환 ${formatBytes(it.outBytes)}',
+              Text('Converted ${formatBytes(it.outBytes)}',
                   style: tabular.copyWith(color: AppColors.success)),
-              Text('원본 ${formatBytes(it.source.bytes)}', style: tabular),
+              Text('Original ${formatBytes(it.source.bytes)}', style: tabular),
             ],
           ),
         ),
@@ -79,7 +79,7 @@ class _CompareScreenState extends State<CompareScreen> {
             top: false,
             child: Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text('슬라이더로 변환본(왼쪽)과 원본(오른쪽) 비교'),
+              child: Text('Drag the slider to compare converted (left) and original (right)'),
             )),
       ]),
     );

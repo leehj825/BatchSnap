@@ -6,7 +6,7 @@ import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppState.cleanCache(); // 이전 실행의 임시 파일 정리
+  await AppState.cleanCache(); // clean temp files from previous runs
   await AppState.instance.load();
   runApp(const BatchSnapApp());
 }

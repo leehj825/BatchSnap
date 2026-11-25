@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models.dart';
 
-/// Pro 상태와 변환 기록. 의존성 최소화를 위해 ChangeNotifier 싱글톤으로 구현.
+/// Pro status and conversion history. A ChangeNotifier singleton to keep dependencies minimal.
 class AppState extends ChangeNotifier {
   AppState._();
   static final instance = AppState._();
@@ -31,7 +31,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// TODO: in_app_purchase 연동 시 구매 검증 결과로만 호출할 것.
+  /// TODO: once in_app_purchase is wired up, call this only after purchase verification.
   Future<void> setPro(bool value) async {
     isPro = value;
     final prefs = await SharedPreferences.getInstance();
@@ -47,7 +47,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 임시 변환 결과/ZIP 폴더. 앱 시작 시 이전 잔여물을 정리한다.
+  /// Temp folder for conversion output / ZIPs. Leftovers are cleaned on app start.
   static Future<Directory> workDir() async {
     final tmp = await getTemporaryDirectory();
     return Directory('${tmp.path}/batchsnap_out');

@@ -6,7 +6,7 @@ import '../models.dart';
 import '../services/app_state.dart';
 import '../theme.dart';
 
-/// 점선 라운드 테두리 카드 (홈 히어로 영역).
+/// Dashed rounded border box (home hero area).
 class DashedBorderBox extends StatelessWidget {
   const DashedBorderBox({super.key, required this.child, this.onTap});
   final Widget child;
@@ -50,8 +50,8 @@ class _DashPainter extends CustomPainter {
   bool shouldRepaint(_DashPainter old) => old.color != color;
 }
 
-/// 홈 화면 하단 광고 자리. 실제 AdMob 적응형 배너로 교체 예정.
-/// 상단 콘텐츠와 최소 16dp 여백을 보장한다.
+/// Ad slot at the bottom of the home screen. To be replaced with a real AdMob
+/// adaptive banner. Keeps at least 16dp of space from the content above.
 class AdBannerPlaceholder extends StatelessWidget {
   const AdBannerPlaceholder({super.key});
 
@@ -64,7 +64,7 @@ class AdBannerPlaceholder extends StatelessWidget {
         height: 50,
         alignment: Alignment.center,
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: const Text('AdMob 배너 광고 영역'),
+        child: const Text('AdMob banner ad area'),
       ),
     );
   }
@@ -100,29 +100,29 @@ Widget thumb(String path, {double size = 64}) => ClipRRect(
       ),
     );
 
-/// 유료 기능 안내. 결제 연동 전까지는 테스트용 잠금 해제 버튼을 제공한다.
+/// Pro feature prompt. Offers a test unlock button until billing is integrated.
 Future<void> showProDialog(BuildContext context, String reason) {
   return showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Pro 기능'),
-      content: Text('$reason\n\n일회성 결제로 광고 제거, 무제한 일괄 변환, '
-          '사용자 지정 용량, EXIF/GPS 삭제, ZIP 공유를 모두 사용할 수 있어요.'),
+      title: const Text('Pro feature'),
+      content: Text('$reason\n\nA one-time purchase removes ads and unlocks unlimited batches, '
+          'custom target sizes, EXIF/GPS removal, and ZIP sharing.'),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(ctx), child: const Text('닫기')),
+            onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         FilledButton(
           onPressed: () async {
-            // TODO: in_app_purchase 구매 플로우로 교체.
+            // TODO: replace with the in_app_purchase flow.
             await AppState.instance.setPro(true);
             if (ctx.mounted) Navigator.pop(ctx);
           },
-          child: const Text('Pro 잠금 해제 (테스트)'),
+          child: const Text('Unlock Pro (test)'),
         ),
       ],
     ),
   );
 }
 
-/// 선택된 사진 총 용량.
+/// Total size of the selected photos.
 int totalBytes(List<PickedImage> l) => l.fold(0, (a, b) => a + b.bytes);

@@ -13,13 +13,13 @@ class CancelToken {
 
 class _SearchResult {
   _SearchResult(this.best, this.bestQuality, this.lowest);
-  final Uint8List? best; // 목표 이하인 결과 중 최고 화질
+  final Uint8List? best; // Highest-quality result that fits the target
   final int bestQuality;
-  final Uint8List? lowest; // 가장 낮은 화질로 만든 결과 (목표 미달성 시 폴백)
+  final Uint8List? lowest; // Smallest result produced (fallback when the target is not reached)
 }
 
 class CompressService {
-  /// 이 값 이하로 내려가면 화질 뭉개짐이 커지므로 해상도를 먼저 줄인다 (설계서 6.2).
+  /// Below this quality artifacts become obvious, so downscale resolution first.
   static const _minAcceptableQuality = 30;
   static const _qualityIterations = 6;
   static const _maxDownscales = 3;
@@ -30,7 +30,7 @@ class CompressService {
         OutFormat.png => CompressFormat.png,
       };
 
-  /// 디코딩 없이 헤더만 읽어 원본 해상도를 얻는다.
+  /// Reads only the header to get the source resolution (no full decode).
   static Future<(int, int)?> _dimensions(String path) async {
     try {
       final bytes = await File(path).readAsBytes();
@@ -45,8 +45,8 @@ class CompressService {
     }
   }
 
-  /// 주의: minWidth/minHeight 기본값이 1920이라, 리사이즈를 원하지 않을 때도
-  /// 큰 값을 명시해야 의도치 않은 다운스케일이 일어나지 않는다.
+  /// Note: minWidth/minHeight default to 1920, so a large value must be passed
+  /// explicitly when no resize is wanted, or images get downscaled unintentionally.
   static Future<Uint8List?> _encode(
     String path, {
     required int quality,
@@ -65,7 +65,7 @@ class CompressService {
     );
   }
 
-  /// 1단계: 현재 해상도에서 Quality 이진 탐색.
+  /// Stage 1: binary search on quality at the current resolution.
   static Future<_SearchResult> _qualitySearch(
     String path,
     int targetBytes,
@@ -94,7 +94,7 @@ class CompressService {
     return _SearchResult(best, bestQ, lowest);
   }
 
-  /// 목표 용량 맞춤. (바이트, 목표 달성 여부)를 반환.
+  /// Fit to target size. Returns (bytes, whether the target was met).
   static Future<(Uint8List, bool)> _compressToTarget(
     String path,
     int targetBytes,
@@ -103,12 +103,12 @@ class CompressService {
   ) async {
     final dims = await _dimensions(path);
     int? w = dims?.$1, h = dims?.$2;
-    Uint8List? fitFallback; // 목표 이하이지만 저화질인 결과
+    Uint8List? fitFallback; // Fits the target but at low quality
     Uint8List? lastAttempt;
 
     for (var step = 0; step <= _maxDownscales; step++) {
       if (format == OutFormat.png) {
-        // PNG는 무손실이라 quality가 의미 없다. 해상도만 줄인다.
+        // PNG is lossless so quality is meaningless; only downscale.
         final out = await _encode(path,
             quality: 100, format: format, keepExif: keepExif, width: w, height: h);
         if (out != null) {
@@ -124,14 +124,14 @@ class CompressService {
           fitFallback = r.best;
         }
       }
-      // 2단계: 가로·세로 0.75배 축소 후 재시도.
+      // Stage 2: shrink width and height by 0.75x and retry.
       w = ((w ?? 4032) * 0.75).round();
       h = ((h ?? 3024) * 0.75).round();
     }
 
     if (fitFallback != null) return (fitFallback, true);
     if (lastAttempt == null) {
-      throw Exception('이미지를 압축하지 못했습니다: $path');
+      throw Exception('Failed to compress image: $path');
     }
     return (lastAttempt, false);
   }
@@ -151,12 +151,12 @@ class CompressService {
       _ => 800,
     };
     final long = w > h ? w : h;
-    if (long <= maxSide) return (null, null); // 확대하지 않음
+    if (long <= maxSide) return (null, null); // never upscale
     final s = maxSide / long;
     return ((w * s).round(), (h * s).round());
   }
 
-  /// 이미지를 순차 처리한다 (OOM 방지: 한 번에 한 장, 결과는 즉시 디스크로).
+  /// Processes images sequentially (OOM safety: one at a time, written to disk immediately).
   static Future<List<ConvertedItem>> run(
     List<PickedImage> images,
     BatchSettings s,
@@ -190,12 +190,12 @@ class CompressService {
               keepExif: keepExif,
               width: w,
               height: h);
-          if (out == null) throw Exception('변환 실패: ${img.name}');
+          if (out == null) throw Exception('Conversion failed: ${img.name}');
           bytes = out;
         case CompressMode.formatOnly:
           final out = await _encode(img.path,
               quality: 95, format: s.format, keepExif: keepExif);
-          if (out == null) throw Exception('변환 실패: ${img.name}');
+          if (out == null) throw Exception('Conversion failed: ${img.name}');
           bytes = out;
       }
 

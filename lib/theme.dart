@@ -11,7 +11,7 @@ class AppColors {
   static const border = Color(0xFFE2E8F0);
 }
 
-/// 용량 수치용: 숫자 폭이 일정한 Tabular Figures.
+/// For size figures: fixed-width tabular numerals.
 const tabular = TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
 ThemeData buildTheme(Brightness b) {

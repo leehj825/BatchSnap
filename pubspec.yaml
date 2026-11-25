@@ -1,5 +1,5 @@
 name: batchsnap
-description: 사진 일괄 용량 줄이기 & 포맷 변환 (100% 오프라인, 전면 광고 없음)
+description: Batch photo compressor & format converter (100% offline, no interstitial ads)
 publish_to: none
 version: 0.1.0+1
 
