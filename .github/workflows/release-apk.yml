@@ -22,6 +22,9 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Cache Gradle downloads so most runs never hit Maven Central
+      - uses: gradle/actions/setup-gradle@v4
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -61,7 +64,16 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
-        run: flutter build apk --release --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}"
+        # Maven Central sometimes rate-limits (HTTP 429) CI runners, so retry with backoff.
+        run: |
+          for attempt in 1 2 3 4; do
+            if flutter build apk --release --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}"; then
+              exit 0
+            fi
+            echo "Build attempt $attempt failed; retrying in $((attempt * 60))s..."
+            sleep $((attempt * 60))
+          done
+          exit 1
 
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk "BatchSnap-${{ steps.ver.outputs.tag }}.apk"
