@@ -2,6 +2,8 @@ name: Release APK (prerelease)
 
 on:
   push:
+    branches:
+      - "**"
     tags:
       - "v*"
   workflow_dispatch:
@@ -46,7 +48,8 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             TAG="${GITHUB_REF_NAME}"
           else
-            TAG="prerelease-${GITHUB_RUN_NUMBER}"
+            # Branch builds / manual runs: unique tag per run
+            TAG="build-${GITHUB_RUN_NUMBER}"
           fi
           NAME="${TAG#v}"
           NAME="${NAME%%-*}"
@@ -71,6 +74,6 @@ jobs:
             "BatchSnap-${{ steps.ver.outputs.tag }}.apk" \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
-            --title "BatchSnap ${{ steps.ver.outputs.tag }}" \
+            --title "BatchSnap ${{ steps.ver.outputs.tag }} (${{ github.ref_name }})" \
             --generate-notes \
             --prerelease
