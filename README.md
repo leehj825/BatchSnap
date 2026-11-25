@@ -43,6 +43,7 @@ flutter run
 `.github/workflows/release-apk.yml` builds a release APK and publishes it as a GitHub **prerelease**.
 
 - Push a tag: `git tag v0.1.0 && git push origin v0.1.0`
-- Or run the workflow manually from the Actions tab (tag becomes `prerelease-<run number>`).
+- Every push to any branch also builds and publishes a prerelease tagged `build-<run number>` (the branch name is in the release title).
+- Or run the workflow manually from the Actions tab.
 
 The APK is signed with the default debug key, which is fine for testing but not for Play Store upload.
