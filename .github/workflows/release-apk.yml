@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       # Cache Gradle downloads so most runs never hit Maven Central
       - uses: gradle/actions/setup-gradle@v4
@@ -64,13 +64,18 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
-        # Maven Central sometimes rate-limits (HTTP 429) CI runners, so retry with backoff.
+        # Retry only on network failures (e.g. Maven Central HTTP 429); real build errors fail fast.
         run: |
+          set -o pipefail
           for attempt in 1 2 3 4; do
-            if flutter build apk --release --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}"; then
+            if flutter build apk --release --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
               exit 0
             fi
-            echo "Build attempt $attempt failed; retrying in $((attempt * 60))s..."
+            if ! grep -qE "Too Many Requests|Could not GET|Could not resolve|Connection (reset|timed out)|downloading artifacts from the network" build.log; then
+              echo "Build failed for a non-network reason; not retrying."
+              exit 1
+            fi
+            echo "Network failure on attempt $attempt; retrying in $((attempt * 60))s..."
             sleep $((attempt * 60))
           done
           exit 1
