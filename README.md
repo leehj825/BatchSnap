@@ -37,3 +37,12 @@ flutter run
 - Real AdMob banner (placeholder in `AdBannerPlaceholder`) and `in_app_purchase` billing (Pro is currently a test toggle)
 - Deleting originals after conversion (the system picker does not expose gallery asset IDs; switch to `wechat_assets_picker`)
 - Localization (English only for now)
+
+## Release (prerelease APK)
+
+`.github/workflows/release-apk.yml` builds a release APK and publishes it as a GitHub **prerelease**.
+
+- Push a tag: `git tag v0.1.0 && git push origin v0.1.0`
+- Or run the workflow manually from the Actions tab (tag becomes `prerelease-<run number>`).
+
+The APK is signed with the default debug key, which is fine for testing but not for Play Store upload.
