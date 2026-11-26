@@ -49,7 +49,11 @@ class _ResultScreenState extends State<ResultScreen> {
         _outDir,
         cancel: _cancel,
         onProgress: (i, name) {
-          if (mounted) setState(() => (_index, _current) = (i, name));
+          if (!mounted) return;
+          setState(() {
+            _index = i;
+            _current = name;
+          });
         },
       );
       if (!mounted) return;
