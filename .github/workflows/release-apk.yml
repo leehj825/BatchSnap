@@ -100,6 +100,11 @@ jobs:
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk "BatchSnap-${{ steps.ver.outputs.tag }}.apk"
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: BatchSnap-*.apk
+
       - name: Publish prerelease
         env:
           GH_TOKEN: ${{ github.token }}
@@ -111,3 +116,53 @@ jobs:
             --title "BatchSnap ${{ steps.ver.outputs.tag }} (${{ github.ref_name }})" \
             --generate-notes \
             --prerelease
+
+  # Launches the APK on an emulator and prints the crash log, so launch
+  # failures can be diagnosed from CI output alone. Never blocks the release.
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Launch app on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install -r apk/BatchSnap-*.apk
+            adb logcat -c
+            adb shell monkey -p com.batchsnap.batchsnap -c android.intent.category.LAUNCHER 1
+            sleep 25
+            adb logcat -d > logcat.txt
+            adb shell pidof com.batchsnap.batchsnap > pid.txt || echo none > pid.txt
+            adb exec-out screencap -p > screen.png
+
+      - name: Show launch result
+        if: always()
+        run: |
+          echo "=== app process (pid) ==="; cat pid.txt || true
+          echo "=== crash-related log lines ==="
+          grep -E "FATAL|AndroidRuntime|DEBUG|Fatal signal|flutter|batchsnap|Process .* has died|ClassNotFound|NoSuchMethod|UnsatisfiedLink" logcat.txt | head -150 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-diagnostics
+          path: |
+            logcat.txt
+            screen.png
+            pid.txt
