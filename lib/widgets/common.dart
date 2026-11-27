@@ -54,7 +54,7 @@ class _DashPainter extends CustomPainter {
   bool shouldRepaint(_DashPainter old) => old.color != color;
 }
 
-/// Anchored adaptive AdMob banner for the bottom of the home screen. Shows
+/// Standard AdMob banner (320x50) for the bottom of the home screen. Shows
 /// nothing for Pro users or until an ad has loaded, and keeps at least 16dp of
 /// space from the content above.
 class AdBanner extends StatelessWidget {
@@ -93,13 +93,12 @@ class _BannerLoaderState extends State<_BannerLoader> {
     _load();
   }
 
+  /// Standard 320x50 banner: compact and a fixed height, so it never grows
+  /// into a large block like the large anchored adaptive sizes can.
   Future<void> _load() async {
-    final width = MediaQuery.sizeOf(context).width.truncate();
-    final size = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
-    if (size == null || !mounted) return;
     final ad = BannerAd(
       adUnitId: AdIds.banner,
-      size: size,
+      size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (a) {
@@ -130,10 +129,12 @@ class _BannerLoaderState extends State<_BannerLoader> {
     if (ad == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 16),
-      child: SizedBox(
-        width: ad.size.width.toDouble(),
-        height: ad.size.height.toDouble(),
-        child: AdWidget(ad: ad),
+      child: Center(
+        child: SizedBox(
+          width: ad.size.width.toDouble(),
+          height: ad.size.height.toDouble(),
+          child: AdWidget(ad: ad),
+        ),
       ),
     );
   }
