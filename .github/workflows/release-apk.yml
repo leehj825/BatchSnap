@@ -81,11 +81,13 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
+        # --no-shrink: R8 renames Room/WorkManager classes pulled in by the ads SDK,
+        # which crashes the app at launch (WorkDatabase_Impl not found).
         # Retry only on network failures (e.g. Maven Central HTTP 429); real build errors fail fast.
         run: |
           set -o pipefail
           for attempt in 1 2 3 4; do
-            if flutter build apk --release --dart-define=ENABLE_ADS=${{ github.event_name != 'workflow_dispatch' || inputs.ads }} --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
+            if flutter build apk --release --no-shrink --dart-define=ENABLE_ADS=${{ github.event_name != 'workflow_dispatch' || inputs.ads }} --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
               exit 0
             fi
             if ! grep -qE "Too Many Requests|Could not GET|Could not resolve|Connection (reset|timed out)|downloading artifacts from the network" build.log; then
