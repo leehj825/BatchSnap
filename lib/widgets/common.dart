@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
 
 import '../models.dart';
 import '../services/ads_service.dart';
 import '../services/app_state.dart';
+import '../services/diagnostics.dart';
 import '../theme.dart';
 
 /// Dashed rounded border box (home hero area).
@@ -133,6 +135,55 @@ class _BannerLoaderState extends State<_BannerLoader> {
         height: ad.size.height.toDouble(),
         child: AdWidget(ad: ad),
       ),
+    );
+  }
+}
+
+/// Shows startup/runtime problems (if any) with a copy button.
+class StartupProblemsCard extends StatelessWidget {
+  const StartupProblemsCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<List<String>>(
+      valueListenable: Diagnostics.problems,
+      builder: (context, problems, _) {
+        if (problems.isEmpty) return const SizedBox.shrink();
+        final text = problems.join('\n\n');
+        return Card(
+          color: Theme.of(context).colorScheme.errorContainer,
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Something went wrong during startup',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                const Text('The app still works, but some features may be '
+                    'limited. Details:'),
+                const SizedBox(height: 8),
+                SelectableText(text, style: const TextStyle(fontSize: 12)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () =>
+                          Clipboard.setData(ClipboardData(text: text)),
+                      child: const Text('Copy'),
+                    ),
+                    TextButton(
+                      onPressed: Diagnostics.clear,
+                      child: const Text('Dismiss'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,29 +1,44 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
 import 'services/ads_service.dart';
 import 'services/app_state.dart';
+import 'services/diagnostics.dart';
 import 'theme.dart';
 
-Future<void> main() async {
-  // Anything that throws during startup is logged instead of killing the app.
-  await runZonedGuarded(() async {
+void main() {
+  runZonedGuarded(() {
     WidgetsFlutterBinding.ensureInitialized();
-    try {
-      await AppState.cleanCache(); // clean temp files from previous runs
-      await AppState.instance.load();
-    } catch (e, st) {
-      debugPrint('Startup state load failed: $e\n$st');
-    }
+    FlutterError.onError =
+        (d) => Diagnostics.record('Flutter', d.exception, d.stack);
+    PlatformDispatcher.instance.onError = (e, st) {
+      Diagnostics.record('Platform', e, st);
+      return true;
+    };
+    // The UI opens immediately; every startup step runs afterwards and a
+    // failure is shown on the home screen instead of blocking or crashing.
     runApp(const BatchSnapApp());
-    // Ads start only after the first frame is on screen, so a slow or failing
-    // ads SDK can never block or crash app launch.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future<void>.delayed(const Duration(seconds: 1), AdsService.init);
-    });
-  }, (e, st) => debugPrint('Uncaught error: $e\n$st'));
+    _bootstrap();
+  }, (e, st) => Diagnostics.record('Uncaught', e, st));
+}
+
+Future<void> _bootstrap() async {
+  try {
+    await AppState.cleanCache(); // clean temp files from previous runs
+  } catch (e, st) {
+    Diagnostics.record('Cache cleanup', e, st);
+  }
+  try {
+    await AppState.instance.load();
+  } catch (e, st) {
+    Diagnostics.record('Loading saved data', e, st);
+  }
+  // Ads start only after the UI is up, so a failing ads SDK can't block launch.
+  await Future<void>.delayed(const Duration(seconds: 1));
+  await AdsService.init();
 }
 
 class BatchSnapApp extends StatelessWidget {

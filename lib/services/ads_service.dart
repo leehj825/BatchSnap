@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'diagnostics.dart';
+
 /// AdMob IDs. Debug builds always use Google's official test ad units, so
 /// developers never click or load real ads (an AdMob policy violation).
 class AdIds {
@@ -50,8 +52,8 @@ class AdsService {
         await MobileAds.instance.initialize();
         ready.value = true;
       }
-    } catch (e) {
-      debugPrint('Ads init failed: $e');
+    } catch (e, st) {
+      Diagnostics.record('Ads', e, st);
     }
   }
 

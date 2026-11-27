@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models.dart';
+import 'diagnostics.dart';
 
 /// Pro status and conversion history. A ChangeNotifier singleton to keep dependencies minimal.
 class AppState extends ChangeNotifier {
@@ -74,6 +75,8 @@ class AppState extends ChangeNotifier {
     try {
       final d = await workDir();
       if (await d.exists()) await d.delete(recursive: true);
-    } catch (_) {}
+    } catch (e, st) {
+      Diagnostics.record('Cache cleanup', e, st);
+    }
   }
 }
