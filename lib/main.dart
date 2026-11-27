@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
+import 'services/ads_service.dart';
 import 'services/app_state.dart';
 import 'theme.dart';
 
@@ -9,6 +10,8 @@ Future<void> main() async {
   await AppState.cleanCache(); // clean temp files from previous runs
   await AppState.instance.load();
   runApp(const BatchSnapApp());
+  // Consent + SDK init run in the background so they never delay startup.
+  AdsService.init();
 }
 
 class BatchSnapApp extends StatelessWidget {

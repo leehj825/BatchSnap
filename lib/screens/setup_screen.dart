@@ -28,7 +28,7 @@ class _SetupScreenState extends State<SetupScreen> {
   // Presets available in the free version.
   static const _freePresets = {500, 1024, 2048};
 
-  bool get _pro => AppState.instance.isPro;
+  bool get _pro => AppState.instance.hasProAccess;
 
   @override
   void initState() {

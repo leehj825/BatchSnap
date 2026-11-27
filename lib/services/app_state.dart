@@ -18,6 +18,23 @@ class AppState extends ChangeNotifier {
   static const _maxHistory = 30;
 
   bool isPro = false;
+
+  /// Granted by watching a rewarded ad; lasts for one batch only.
+  bool tempUnlocked = false;
+
+  /// Pro features are available (purchased, or unlocked by a rewarded ad).
+  bool get hasProAccess => isPro || tempUnlocked;
+
+  void grantTempUnlock() {
+    tempUnlocked = true;
+    notifyListeners();
+  }
+
+  void clearTempUnlock() {
+    if (!tempUnlocked) return;
+    tempUnlocked = false;
+    notifyListeners();
+  }
   List<HistoryEntry> history = [];
 
   Future<void> load() async {

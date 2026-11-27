@@ -43,6 +43,15 @@ jobs:
               android/app/src/main/AndroidManifest.xml
           fi
 
+      # AdMob app ID is required in the manifest or the app crashes at launch.
+      - name: Add AdMob app ID to manifest
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if ! grep -q "com.google.android.gms.ads.APPLICATION_ID" "$MANIFEST"; then
+            sed -i 's|</application>|    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-4400173019354346~5995575350"/>\n    </application>|' "$MANIFEST"
+          fi
+          grep -n "APPLICATION_ID" "$MANIFEST"
+
       - run: flutter pub get
 
       - name: Generate launcher icons

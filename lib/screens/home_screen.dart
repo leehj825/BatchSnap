@@ -127,7 +127,7 @@ class HomeScreen extends StatelessWidget {
                 top: false,
                 child: Padding(
                   padding: EdgeInsets.only(bottom: 0),
-                  child: AdBannerPlaceholder(),
+                  child: AdBanner(),
                 ),
               ),
             ],
