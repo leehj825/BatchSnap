@@ -7,6 +7,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      ads:
+        description: "Include ads (set false to build an ad-free APK for debugging)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -80,7 +85,7 @@ jobs:
         run: |
           set -o pipefail
           for attempt in 1 2 3 4; do
-            if flutter build apk --release --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
+            if flutter build apk --release --dart-define=ENABLE_ADS=${{ github.event_name != 'workflow_dispatch' || inputs.ads }} --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
               exit 0
             fi
             if ! grep -qE "Too Many Requests|Could not GET|Could not resolve|Connection (reset|timed out)|downloading artifacts from the network" build.log; then

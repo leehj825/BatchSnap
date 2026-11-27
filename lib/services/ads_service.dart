@@ -21,12 +21,17 @@ class AdIds {
 class AdsService {
   AdsService._();
 
+  /// Build with `--dart-define=ENABLE_ADS=false` to turn every ad feature off
+  /// (useful to tell whether a launch problem comes from the ads SDK).
+  static const enabled = bool.fromEnvironment('ENABLE_ADS', defaultValue: true);
+
   /// True once consent was gathered and the SDK is initialized.
   static final ready = ValueNotifier<bool>(false);
 
   /// Gathers consent (UMP, required in the EEA/UK) and then initializes the SDK.
   /// Never throws; ads simply stay disabled on failure.
   static Future<void> init() async {
+    if (!enabled) return;
     try {
       final done = Completer<void>();
       ConsentInformation.instance.requestConsentInfoUpdate(
