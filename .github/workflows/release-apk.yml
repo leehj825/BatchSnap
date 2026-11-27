@@ -57,6 +57,29 @@ jobs:
           fi
           grep -n "APPLICATION_ID" "$MANIFEST"
 
+      # R8 renames Room/WorkManager classes that the ads SDK pulls in, so the app
+      # crashed at launch ("Failed to create an instance of WorkDatabase").
+      # Turn minification off in the release build type and keep those classes
+      # in case it is ever re-enabled.
+      - name: Configure release build (no R8 minify)
+        run: |
+          cat > android/app/proguard-rules.pro <<'RULES'
+          -keep class androidx.work.** { *; }
+          -keep class androidx.room.** { *; }
+          -keep class * extends androidx.room.RoomDatabase { *; }
+          -keepclassmembers class * extends androidx.room.RoomDatabase { <init>(...); }
+          -dontwarn androidx.room.**
+          RULES
+          GRADLE=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -1)
+          if ! grep -q "proguard-rules.pro" "$GRADLE"; then
+            if [[ "$GRADLE" == *.kts ]]; then
+              sed -i '/signingConfig = signingConfigs.getByName("debug")/a\            isMinifyEnabled = false\n            isShrinkResources = false\n            proguardFiles("proguard-rules.pro")' "$GRADLE"
+            else
+              sed -i '/signingConfig signingConfigs.debug/a\            minifyEnabled false\n            shrinkResources false\n            proguardFiles "proguard-rules.pro"' "$GRADLE"
+            fi
+          fi
+          echo "--- $GRADLE buildTypes"; sed -n '/buildTypes/,/^    }/p' "$GRADLE"
+
       - run: flutter pub get
 
       - name: Generate launcher icons
