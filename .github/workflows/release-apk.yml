@@ -184,12 +184,32 @@ jobs:
           cp build/app/outputs/bundle/release/app-release.aab "BatchSnap-${{ steps.ver.outputs.tag }}.aab"
           ls -la BatchSnap-*
 
-      # Shows which key signed the APK (release keystore vs. Android Debug).
+      # Confirms the APK is signed with the release keystore (not the debug key)
+      # by comparing the signing certificate's SHA-256 with the keystore's.
       - name: Verify APK signature
         continue-on-error: true
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --print-certs "BatchSnap-${{ steps.ver.outputs.tag }}.apk" | grep -E "Signer #1 certificate (DN|SHA-256)"
+          APK="BatchSnap-${{ steps.ver.outputs.tag }}.apk"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK/build-tools" -name apksigner | sort -V | tail -1)
+          echo "apksigner: $APKSIGNER"
+          OUT=$("$APKSIGNER" verify --print-certs "$APK" 2>&1) || { echo "$OUT"; exit 1; }
+          APK_FP=$(echo "$OUT" | grep -i "certificate SHA-256 digest" | head -1 | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')
+          echo "APK signer SHA-256: $APK_FP"
+          if [ -f android/app/upload-keystore.jks ]; then
+            KS_FP=$(keytool -list -keystore android/app/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep "SHA-256" | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')
+            if [ "$APK_FP" = "$KS_FP" ]; then
+              echo "OK: APK is signed with the release keystore."
+            else
+              echo "::error::APK signature does not match the release keystore."
+              exit 1
+            fi
+          else
+            echo "::warning::No release keystore in this run; APK is signed with the debug key."
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
