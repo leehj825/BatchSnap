@@ -1,4 +1,4 @@
-name: Release APK (prerelease)
+name: Release APK + AAB (prerelease)
 
 on:
   push:
@@ -80,6 +80,54 @@ jobs:
           fi
           echo "--- $GRADLE buildTypes"; sed -n '/buildTypes/,/^    }/p' "$GRADLE"
 
+      # Sign with the release keystore stored in repository secrets
+      # (KEYSTORE_B64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD).
+      - name: Configure release signing
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::KEYSTORE_B64 secret is empty; the release will be signed with the debug key."
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/upload-keystore.jks
+          {
+            printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'storeFile=upload-keystore.jks\n'
+          } > android/key.properties
+          # Fail early (and without printing secrets) if the keystore/alias/password don't match.
+          keytool -list -keystore android/app/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | tail -2
+          python3 - <<'PY'
+          p = 'android/app/build.gradle.kts'
+          s = open(p).read()
+          if 'create("release")' not in s:
+              block = """    signingConfigs {
+                  create("release") {
+                      val keyProps = Properties()
+                      val keyFile = rootProject.file("key.properties")
+                      if (keyFile.exists()) keyProps.load(FileInputStream(keyFile))
+                      keyAlias = keyProps["keyAlias"] as String?
+                      keyPassword = keyProps["keyPassword"] as String?
+                      storeFile = (keyProps["storeFile"] as String?)?.let { file(it) }
+                      storePassword = keyProps["storePassword"] as String?
+                  }
+              }
+
+          """
+              s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
+              # `java.util.*` can't be referenced inside android {} (it resolves to the
+              # `java` extension), so import the classes at the top of the script.
+              s = 'import java.io.FileInputStream\nimport java.util.Properties\n\n' + s
+              s = s.replace('signingConfigs.getByName("debug")', 'signingConfigs.getByName("release")')
+              open(p, 'w').write(s)
+          PY
+          sed -n '/signingConfigs {/,/^    }/p;/buildTypes {/,/^    }/p' android/app/build.gradle.kts | grep -v -i password
+
       - run: flutter pub get
 
       - name: Generate launcher icons
@@ -103,27 +151,65 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
-      - name: Build release APK
+      - name: Build release APK and AAB
         # --no-shrink: R8 renames Room/WorkManager classes pulled in by the ads SDK,
         # which crashes the app at launch (WorkDatabase_Impl not found).
         # Retry only on network failures (e.g. Maven Central HTTP 429); real build errors fail fast.
         run: |
           set -o pipefail
-          for attempt in 1 2 3 4; do
-            if flutter build apk --release --no-shrink --dart-define=ENABLE_ADS=${{ github.event_name != 'workflow_dispatch' || inputs.ads }} --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
-              exit 0
-            fi
-            if ! grep -qE "Too Many Requests|Could not GET|Could not resolve|Connection (reset|timed out)|downloading artifacts from the network" build.log; then
-              echo "Build failed for a non-network reason; not retrying."
+          build() {
+            for attempt in 1 2 3 4; do
+              if "$@" 2>&1 | tee build.log; then
+                return 0
+              fi
+              if ! grep -qE "Too Many Requests|Could not GET|Could not resolve|Connection (reset|timed out)|downloading artifacts from the network" build.log; then
+                echo "Build failed for a non-network reason; not retrying."
+                return 1
+              fi
+              echo "Network failure on attempt $attempt; retrying in $((attempt * 60))s..."
+              sleep $((attempt * 60))
+            done
+            return 1
+          }
+          ARGS=(--release --no-shrink
+            --dart-define=ENABLE_ADS=${{ github.event_name != 'workflow_dispatch' || inputs.ads }}
+            --build-name "${{ steps.ver.outputs.name }}"
+            --build-number "${{ github.run_number }}")
+          build flutter build apk "${ARGS[@]}"
+          build flutter build appbundle "${ARGS[@]}"
+
+      - name: Rename outputs
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk "BatchSnap-${{ steps.ver.outputs.tag }}.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "BatchSnap-${{ steps.ver.outputs.tag }}.aab"
+          ls -la BatchSnap-*
+
+      # Confirms the APK is signed with the release keystore (not the debug key)
+      # by comparing the signing certificate's SHA-256 with the keystore's.
+      - name: Verify APK signature
+        continue-on-error: true
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          APK="BatchSnap-${{ steps.ver.outputs.tag }}.apk"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK/build-tools" -name apksigner | sort -V | tail -1)
+          echo "apksigner: $APKSIGNER"
+          OUT=$("$APKSIGNER" verify --print-certs "$APK" 2>&1) || { echo "$OUT"; exit 1; }
+          APK_FP=$(echo "$OUT" | grep -i "certificate SHA-256 digest" | head -1 | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')
+          echo "APK signer SHA-256: $APK_FP"
+          if [ -f android/app/upload-keystore.jks ]; then
+            KS_FP=$(keytool -list -keystore android/app/upload-keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep "SHA-256" | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')
+            if [ "$APK_FP" = "$KS_FP" ]; then
+              echo "OK: APK is signed with the release keystore."
+            else
+              echo "::error::APK signature does not match the release keystore."
               exit 1
             fi
-            echo "Network failure on attempt $attempt; retrying in $((attempt * 60))s..."
-            sleep $((attempt * 60))
-          done
-          exit 1
-
-      - name: Rename APK
-        run: cp build/app/outputs/flutter-apk/app-release.apk "BatchSnap-${{ steps.ver.outputs.tag }}.apk"
+          else
+            echo "::warning::No release keystore in this run; APK is signed with the debug key."
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -136,6 +222,7 @@ jobs:
         run: |
           gh release create "${{ steps.ver.outputs.tag }}" \
             "BatchSnap-${{ steps.ver.outputs.tag }}.apk" \
+            "BatchSnap-${{ steps.ver.outputs.tag }}.aab" \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
             --title "BatchSnap ${{ steps.ver.outputs.tag }} (${{ github.ref_name }})" \
