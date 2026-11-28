@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models.dart';
+import 'diagnostics.dart';
 
 /// Pro status and conversion history. A ChangeNotifier singleton to keep dependencies minimal.
 class AppState extends ChangeNotifier {
@@ -18,6 +19,23 @@ class AppState extends ChangeNotifier {
   static const _maxHistory = 30;
 
   bool isPro = false;
+
+  /// Granted by watching a rewarded ad; lasts for one batch only.
+  bool tempUnlocked = false;
+
+  /// Pro features are available (purchased, or unlocked by a rewarded ad).
+  bool get hasProAccess => isPro || tempUnlocked;
+
+  void grantTempUnlock() {
+    tempUnlocked = true;
+    notifyListeners();
+  }
+
+  void clearTempUnlock() {
+    if (!tempUnlocked) return;
+    tempUnlocked = false;
+    notifyListeners();
+  }
   List<HistoryEntry> history = [];
 
   Future<void> load() async {
@@ -57,6 +75,8 @@ class AppState extends ChangeNotifier {
     try {
       final d = await workDir();
       if (await d.exists()) await d.delete(recursive: true);
-    } catch (_) {}
+    } catch (e, st) {
+      Diagnostics.record('Cache cleanup', e, st);
+    }
   }
 }

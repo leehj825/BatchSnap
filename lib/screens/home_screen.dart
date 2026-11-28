@@ -61,6 +61,7 @@ class HomeScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    const StartupProblemsCard(),
                     DashedBorderBox(
                       onTap: () => _start(context, BatchSettings()),
                       child: const SizedBox(
@@ -127,7 +128,7 @@ class HomeScreen extends StatelessWidget {
                 top: false,
                 child: Padding(
                   padding: EdgeInsets.only(bottom: 0),
-                  child: AdBannerPlaceholder(),
+                  child: AdBanner(),
                 ),
               ),
             ],

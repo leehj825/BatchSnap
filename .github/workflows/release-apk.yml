@@ -7,6 +7,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      ads:
+        description: "Include ads (set false to build an ad-free APK for debugging)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -43,6 +48,38 @@ jobs:
               android/app/src/main/AndroidManifest.xml
           fi
 
+      # AdMob app ID is required in the manifest or the app crashes at launch.
+      - name: Add AdMob app ID to manifest
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if ! grep -q "com.google.android.gms.ads.APPLICATION_ID" "$MANIFEST"; then
+            sed -i 's|</application>|    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-4400173019354346~5995575350"/>\n    </application>|' "$MANIFEST"
+          fi
+          grep -n "APPLICATION_ID" "$MANIFEST"
+
+      # R8 renames Room/WorkManager classes that the ads SDK pulls in, so the app
+      # crashed at launch ("Failed to create an instance of WorkDatabase").
+      # Turn minification off in the release build type and keep those classes
+      # in case it is ever re-enabled.
+      - name: Configure release build (no R8 minify)
+        run: |
+          cat > android/app/proguard-rules.pro <<'RULES'
+          -keep class androidx.work.** { *; }
+          -keep class androidx.room.** { *; }
+          -keep class * extends androidx.room.RoomDatabase { *; }
+          -keepclassmembers class * extends androidx.room.RoomDatabase { <init>(...); }
+          -dontwarn androidx.room.**
+          RULES
+          GRADLE=$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -1)
+          if ! grep -q "proguard-rules.pro" "$GRADLE"; then
+            if [[ "$GRADLE" == *.kts ]]; then
+              sed -i '/signingConfig = signingConfigs.getByName("debug")/a\            isMinifyEnabled = false\n            isShrinkResources = false\n            proguardFiles("proguard-rules.pro")' "$GRADLE"
+            else
+              sed -i '/signingConfig signingConfigs.debug/a\            minifyEnabled false\n            shrinkResources false\n            proguardFiles "proguard-rules.pro"' "$GRADLE"
+            fi
+          fi
+          echo "--- $GRADLE buildTypes"; sed -n '/buildTypes/,/^    }/p' "$GRADLE"
+
       - run: flutter pub get
 
       - name: Generate launcher icons
@@ -67,11 +104,13 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
+        # --no-shrink: R8 renames Room/WorkManager classes pulled in by the ads SDK,
+        # which crashes the app at launch (WorkDatabase_Impl not found).
         # Retry only on network failures (e.g. Maven Central HTTP 429); real build errors fail fast.
         run: |
           set -o pipefail
           for attempt in 1 2 3 4; do
-            if flutter build apk --release --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
+            if flutter build apk --release --no-shrink --dart-define=ENABLE_ADS=${{ github.event_name != 'workflow_dispatch' || inputs.ads }} --build-name "${{ steps.ver.outputs.name }}" --build-number "${{ github.run_number }}" 2>&1 | tee build.log; then
               exit 0
             fi
             if ! grep -qE "Too Many Requests|Could not GET|Could not resolve|Connection (reset|timed out)|downloading artifacts from the network" build.log; then
@@ -86,6 +125,11 @@ jobs:
       - name: Rename APK
         run: cp build/app/outputs/flutter-apk/app-release.apk "BatchSnap-${{ steps.ver.outputs.tag }}.apk"
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: BatchSnap-*.apk
+
       - name: Publish prerelease
         env:
           GH_TOKEN: ${{ github.token }}
@@ -97,3 +141,53 @@ jobs:
             --title "BatchSnap ${{ steps.ver.outputs.tag }} (${{ github.ref_name }})" \
             --generate-notes \
             --prerelease
+
+  # Launches the APK on an emulator and prints the crash log, so launch
+  # failures can be diagnosed from CI output alone. Never blocks the release.
+  smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Launch app on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install -r apk/BatchSnap-*.apk
+            adb logcat -c
+            adb shell monkey -p com.batchsnap.batchsnap -c android.intent.category.LAUNCHER 1
+            sleep 25
+            adb logcat -d > logcat.txt
+            adb shell pidof com.batchsnap.batchsnap > pid.txt || echo none > pid.txt
+            adb exec-out screencap -p > screen.png
+
+      - name: Show launch result
+        if: always()
+        run: |
+          echo "=== app process (pid) ==="; cat pid.txt || true
+          echo "=== crash-related log lines ==="
+          grep -E "FATAL|AndroidRuntime|DEBUG|Fatal signal|flutter|batchsnap|Process .* has died|ClassNotFound|NoSuchMethod|UnsatisfiedLink" logcat.txt | head -150 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-diagnostics
+          path: |
+            logcat.txt
+            screen.png
+            pid.txt

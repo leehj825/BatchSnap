@@ -98,7 +98,7 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _shareZip() async {
-    if (!AppState.instance.isPro) {
+    if (!AppState.instance.hasProAccess) {
       await showProDialog(context, 'Sharing as a ZIP is a Pro feature.');
       return;
     }
@@ -114,6 +114,9 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   void dispose() {
     _cancel.cancelled = true;
+    // A rewarded unlock covers one batch only. Deferred: notifying listeners
+    // while the tree is being torn down is not allowed.
+    Future.microtask(AppState.instance.clearTempUnlock);
     super.dispose();
   }
 
